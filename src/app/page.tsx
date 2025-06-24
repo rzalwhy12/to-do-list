@@ -1,18 +1,172 @@
 "use client";
-import React, { useRef, useState } from "react";
 
+import React, { useRef, useState, useEffect } from "react";
+
+//========(Interface)========
 interface TodoItem {
     text: string;
     completed: boolean;
 }
 
+interface LoginPageProps {
+    setIsLoggedIn: (isLoggedIn: boolean) => void;
+    setShowLoginPage: (show: boolean) => void;
+    setLoggedInUsername: (username: string) => void;
+}
+
+//========(Komponen Halaman Login)========
+function LoginPage({ setIsLoggedIn, setShowLoginPage, setLoggedInUsername }: LoginPageProps) {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+
+    const handleLogin = () => {
+        //========(Logika login sederhana)========
+        if (username.trim() === '' || password.trim() === '') {
+            alert("Nama pengguna dan kata sandi tidak boleh kosong.");
+            return;
+        }
+        setIsLoggedIn(true);
+        setLoggedInUsername(username);
+        setShowLoginPage(false);
+    };
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100/30 p-4">
+            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md ">
+                <h2 className="text-4xl font-bold text-center mb-8 text-purple-700">Login</h2>
+                <div className="mb-4">
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
+                        Nama Pengguna
+                    </label>
+                    <input
+                        type="text"
+                        id="username"
+                        className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-400"
+                        placeholder="Masukkan nama pengguna Anda"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                    />
+                </div>
+                <div className="mb-6">
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+                        Kata Sandi
+                    </label>
+                    <input
+                        type="password"
+                        id="password"
+                        className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-400"
+                        placeholder="Masukkan kata sandi Anda"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                </div>
+                <button
+                    onClick={handleLogin}
+                    className="w-full bg-purple-400 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200"
+                >
+                    Masuk
+                </button>
+                <button
+                    onClick={() => setShowLoginPage(false)}
+                    className="w-full mt-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200"
+                >
+                    Batal
+                </button>
+            </div>
+        </div>
+    );
+}
+
+//========(Komponen Modal Konfirmasi)========
+interface ConfirmationModalProps {
+    message: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+}
+
+function ConfirmationModal({ message, onConfirm, onCancel }: ConfirmationModalProps) {
+    return (
+        <div className="fixed inset-0 bg-gray-900/55 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+                <p className="text-lg mb-6 text-gray-800">{message}</p>
+                <div className="flex justify-center space-x-4">
+                    <button
+                        onClick={onConfirm}
+                        className="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors duration-200"
+                    >
+                        Ya
+                    </button>
+                    <button
+                        onClick={onCancel}
+                        className="px-6 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-colors duration-200"
+                    >
+                        Tidak
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+//========(Komponen Utama Halaman Todo)========
 function Page() {
+
     const inTugasname = useRef<HTMLInputElement>(null);
 
     const [data, setData] = useState<TodoItem[]>([]);
     const [filter, setFilter] = useState<'All' | 'Active' | 'Completed'>('All');
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [showLoginPage, setShowLoginPage] = useState(false);
+    const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null);
+    const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
 
+    //========(Muat data dari sessionStorage saat komponen dimuat)========
+    useEffect(() => {
+        const simpan = sessionStorage.getItem('todo');
+        if (simpan) {
+            try {
+                const parsed = JSON.parse(simpan);
+                if (Array.isArray(parsed)) {
+                    setData(parsed);
+                } else {
+                    console.error("Data 'todo' bukan array, menghapus penyimpanan.");
+                    sessionStorage.removeItem('todo');
+                    setData([]);
+                }
+            } catch (error) {
+                console.error("Kesalahan parsing data dari sessionStorage:", error);
+                sessionStorage.removeItem('todo');
+                setData([]);
+            }
+        }
+        const storedLoginStatus = sessionStorage.getItem('isLoggedIn');
+        const storedUsername = sessionStorage.getItem('loggedInUsername');
+        if (storedLoginStatus === 'true' && storedUsername) {
+            setIsLoggedIn(true);
+            setLoggedInUsername(storedUsername);
+        }
+    }, []);
+
+    //========(Simpan data ke sessionStorage setiap kali 'data' atau status login berubah)========
+    useEffect(() => {
+        sessionStorage.setItem('todo', JSON.stringify(data));
+        sessionStorage.setItem('isLoggedIn', String(isLoggedIn));
+        if (loggedInUsername) {
+            sessionStorage.setItem('loggedInUsername', loggedInUsername);
+        } else {
+            sessionStorage.removeItem('loggedInUsername');
+        }
+    }, [data, isLoggedIn, loggedInUsername]);
+
+
+    //========(Menambahkan tugas baru saat tombol Enter ditekan)========
     function onBtSubmit(event: React.KeyboardEvent<HTMLInputElement>) {
+        if (!isLoggedIn) {
+            alert("Silakan masuk untuk menambahkan tugas.");
+            return;
+        }
+
         if (event.key === "Enter" && inTugasname.current) {
             const newTodoText = inTugasname.current.value.trim();
 
@@ -24,7 +178,7 @@ function Page() {
             const isDuplicate = data.some(item => item.text === newTodoText);
 
             if (isDuplicate) {
-                alert("This todo already exists!");
+                alert("Tugas ini sudah ada bree!");
             } else {
                 setData([...data, { text: newTodoText, completed: false }]);
                 inTugasname.current.value = "";
@@ -32,12 +186,14 @@ function Page() {
         }
     }
 
+    //========(Mengubah status selesai/belum selesai dari tugas)========
     function toggleTodoCompletion(index: number) {
         const newData = [...data];
         newData[index].completed = !newData[index].completed;
         setData(newData);
     }
 
+    //========(Mengembalikan daftar tugas berdasarkan filter yang dipilih)========
     function getFilteredTodos() {
         if (filter === 'Active') {
             return data.filter(item => !item.completed);
@@ -47,57 +203,182 @@ function Page() {
         return data;
     }
 
+    //========(Menghapus semua tugas yang sudah selesai)========
     function clearCompletedTodos() {
         setData(data.filter(item => !item.completed));
     }
 
+    //========(Menampilkan modal konfirmasi logout)========
+    function confirmLogout() {
+        setShowConfirmLogoutModal(true);
+    }
+
+    //========(Menangani konfirmasi logout dan membersihkan data)========
+    function handleLogoutConfirmed() {
+        setIsLoggedIn(false);
+        setLoggedInUsername(null);
+        setData([]);
+        sessionStorage.removeItem('todo');
+        sessionStorage.removeItem('isLoggedIn');
+        sessionStorage.removeItem('loggedInUsername');
+        setShowLoginPage(false);
+        setShowConfirmLogoutModal(false);
+    }
+
+    //========(State untuk melacak index item yang sedang diedit)========
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    //========(State untuk menyimpan teks yang sedang diedit)========
+    const [editedText, setEditedText] = useState<string>('');
+
+    //========(Memulai mode edit untuk tugas tertentu)========
+    const handleEditClick = (index: number, text: string) => {
+        setEditingIndex(index);
+        setEditedText(text);
+    };
+
+    //========(Menyimpan perubahan setelah mengedit tugas)========
+    const handleSaveEdit = (originalIndex: number) => {
+        if (editedText.trim() === "") {
+            alert("Todo tidak boleh kosong!");
+            return;
+        }
+        const newData = [...data];
+        const isDuplicate = newData.some((item: TodoItem, idx: number) => idx !== originalIndex && item.text.toLowerCase() === editedText.trim().toLowerCase());
+        if (isDuplicate) {
+            alert("Tugas ini sudah ada bree!");
+            return;
+        }
+
+        newData[originalIndex].text = editedText.trim();
+        setData(newData);
+        setEditingIndex(null);
+        setEditedText('');
+    };
+
+    //========(Membatalkan mode edit)========
+    const handleCancelEdit = () => {
+        setEditingIndex(null);
+        setEditedText('');
+    };
+    //========(Menampilkan daftar tugas yang difilter)========
     function displayData() {
         const filteredTodos = getFilteredTodos();
         return filteredTodos.map((item: TodoItem, index: number) => {
             const originalIndex = data.findIndex(dItem => dItem.text === item.text && dItem.completed === item.completed);
+            const isEditing = editingIndex === originalIndex;
+
             return (
-                <label
-                    key={`${item.text}-${index}`}
-                    className="todo-item flex items-center p-4 border-b border-gray-300 text-xl text-gray-700 cursor-pointer"
+                <div
+                    key={`${item.text}-${index}-wrapper`}
+                    className="flex items-center p-4 border-b border-gray-300 text-xl text-gray-700 last:border-b-0"
                 >
-                    <input
-                        type="checkbox"
-                        className="peer opacity-0 absolute w-6 h-6 z-10 cursor-pointer appearance-none"
-                        checked={item.completed}
-                        onChange={() => toggleTodoCompletion(originalIndex)}
-                    />
-                    <div className="absolute checkbox-circle w-[25px] h-[25px] rounded-full border border-gray-300 flex justify-center items-center cursor-pointer shrink-0 z-10"></div>
-                    <img src="/lalala.png" alt="" className="opacity-0 peer-checked:opacity-100 z-11" />
-                    <span className={`todo-text ml-4 ${item.completed ? 'line-through' : ''}`}>{item.text}</span>
-                </label>
+                    <label className="todo-item flex items-center flex-grow cursor-pointer">
+                        <input
+                            type="checkbox"
+                            className="peer opacity-0 absolute w-6 h-6 z-10 cursor-pointer appearance-none"
+                            checked={item.completed}
+                            onChange={() => toggleTodoCompletion(originalIndex)}
+                        />
+                        <div className="absolute checkbox-circle w-[25px] h-[25px] rounded-full border border-gray-300 flex justify-center items-center cursor-pointer shrink-0 z-10"></div>
+                        <img src="/lalala.png" alt="" className="opacity-0 peer-checked:opacity-100 z-11" />
+
+                        {isEditing ? (
+                            <input
+                                type="text"
+                                value={editedText}
+                                onChange={(e) => setEditedText(e.target.value)}
+                                className="flex-grow ml-4 p-1 border rounded focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveEdit(originalIndex);
+                                    if (e.key === 'Escape') handleCancelEdit();
+                                }}
+                            />
+                        ) : (
+                            <span className={`todo-text ml-4 ${item.completed ? 'line-through' : ''}`}>{item.text}</span>
+                        )}
+                    </label>
+                    {isLoggedIn && !isEditing && (
+                        <button
+                            onClick={() => handleEditClick(originalIndex, item.text)}
+                            className="ml-4 px-3 py-1 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors duration-200 text-sm shadow-sm"
+                        >
+                            Edit
+                        </button>
+                    )}
+                    {isEditing && (
+                        <div className="ml-4 flex space-x-2">
+                            <button
+                                onClick={() => handleSaveEdit(originalIndex)}
+                                className="px-3 py-1 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors duration-200 text-sm shadow-sm"
+                            >
+                                Save
+                            </button>
+                            <button
+                                onClick={handleCancelEdit}
+                                className="px-3 py-1 bg-gray-400 text-gray-800 rounded-md hover:bg-gray-500 transition-colors duration-200 text-sm shadow-sm"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    )}
+                </div>
             );
         });
     }
 
+    //========(Menghitung jumlah tugas yang belum selesai)========
     const itemsLeft = data.filter(item => !item.completed).length;
+
+    //========(Menampilkan halaman login jika showLoginPage true)========
+    if (showLoginPage) {
+        return <LoginPage setIsLoggedIn={setIsLoggedIn} setShowLoginPage={setShowLoginPage} setLoggedInUsername={setLoggedInUsername} />;
+    }
 
     return (
         <div className="min-h-screen flex justify-center">
             <div className="container w-full max-w-xl px-5">
-                <header className="relative h-72 w-full flex flex-col items-center justify-start pt-[400px] rounded-b-lg">
-                    <div className="absolute top-0 left-0 w-full h-full "></div>
-                    <div className="absolute top-36 w-full flex justify-between items-center px-4">
-                        <h1 className="text-white text-shadow-2xs text-5xl font-bold tracking-[10px] m-0 ">TODO</h1>
-                        <button className="bg-none text-shadow-2xs border-none text-white text-3xl cursor-pointer p-1 flex items-center justify-center" aria-label="Toggle theme">
-                            &#9789;
-                        </button>
+                <header className="relative h-72 w-full flex flex-col items-center justify-start rounded-b-lg ">
+                    <div className="absolute top-0 left-0 w-full h-full rounded-b-lg p-7"></div>
+                    <div className="relative z-20 w-full flex justify-between items-start pt-8 px-4 mt-30">
+                        <div>
+                            <h1 className="text-white text-shadow-2xs text-5xl font-bold tracking-[10px] m-0 ">TODO</h1>
+                            {isLoggedIn && loggedInUsername && (
+                                <p className="text-white text-lg mt-2 ml-1 text-shadow-xs">Selamat datang, {loggedInUsername}!</p>
+                            )}
+                        </div>
+                        <div className="flex items-center space-x-4">
+                            <button className="bg-none text-shadow-2xs border-none text-white text-3xl cursor-pointer p-1 flex items-center justify-center" aria-label="Toggle theme">
+                                &#9789;
+                            </button>
+                            {isLoggedIn ? (
+                                <button
+                                    onClick={confirmLogout}
+                                    className="px-4 py-2 bg-purple-600 text-white text-sm font-bold text-shadow-amber-500 rounded-md hover:bg-purple-700 transition-colors duration-200 shadow-md"
+                                >
+                                    Keluar
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => setShowLoginPage(true)}
+                                    className="px-4 py-2 bg-white text-purple-600 text-sm rounded-md hover:bg-purple-300 transition-colors duration-200 shadow-md"
+                                >
+                                    Login
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </header>
 
                 <main className="todo-app mt-[-150px] relative z-10">
-                    <div className="create-todo bg-white p-4 rounded-md flex items-center mb-5 shadow-lg">
+                    <div className="create-todo bg-white p-4 rounded-md flex items-center mb-5 mt-30 shadow-lg">
                         <button className="checkbox-circle w-[25px] h-[25px] rounded-full border border-gray-300 flex justify-center items-center cursor-pointer shrink-0"></button>
                         <input
                             type="text"
-                            placeholder="Create a new todo..."
+                            placeholder="Create new todo..."
                             className="flex-grow border-none outline-none bg-none text-xl pl-4 text-gray-700 font-josefin placeholder:text-gray-500"
                             ref={inTugasname}
                             onKeyDown={onBtSubmit}
+                            disabled={!isLoggedIn}
                         />
                     </div>
 
@@ -105,7 +386,7 @@ function Page() {
                         {displayData()}
 
                         <div className="todo-footer flex justify-between items-center p-4 text-sm text-gray-500">
-                            <span>{itemsLeft} items left</span>
+                            <span>{itemsLeft} Item Left</span>
                             <div className="filter-buttons flex gap-4">
                                 <button
                                     className={`bg-none border-none text-gray-500 cursor-pointer font-josefin text-sm ${filter === 'All' ? 'font-bold text-blue-600' : ''}`}
@@ -135,9 +416,16 @@ function Page() {
                         </div>
                     </div>
 
-                    <p className="drag-info text-center mt-12 text-sm text-gray-500">Drag and drop to reorder list</p>
+                    <p className="drag-info text-center mt-12 text-sm text-gray-500">Drag and drop to reorder the list</p>
                 </main>
             </div>
+            {showConfirmLogoutModal && (
+                <ConfirmationModal
+                    message="Apakah Anda yakin ingin keluar?"
+                    onConfirm={handleLogoutConfirmed}
+                    onCancel={() => setShowConfirmLogoutModal(false)}
+                />
+            )}
         </div>
     );
 }
