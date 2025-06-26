@@ -1,83 +1,19 @@
+// src/app/page.tsx
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
 
-//========(Interface)========
+// PASTIKAN SEMUA INI ADALAH DEFAULT EXPORT DARI FILE MASING-MASING
+import LoginPage from "./loginpage/page"; // Ini seharusnya komponen LoginPage Anda
+import LandingPage from "../component/LandingPage"; // Ini seharusnya komponen LandingPage Anda
+import SignupPage from "./loginpage/SignupPage"; // Ini seharusnya komponen SignupPage Anda
+
+// --- Interfaces (Tidak berubah, atau sesuaikan jika ada kebutuhan spesifik) ---
 interface TodoItem {
     text: string;
     completed: boolean;
 }
 
-interface LoginPageProps {
-    setIsLoggedIn: (isLoggedIn: boolean) => void;
-    setShowLoginPage: (show: boolean) => void;
-    setLoggedInUsername: (username: string) => void;
-}
-
-//========(Komponen Halaman Login)========
-function LoginPage({ setIsLoggedIn, setShowLoginPage, setLoggedInUsername }: LoginPageProps) {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-
-    const handleLogin = () => {
-        //========(Logika login sederhana)========
-        if (username.trim() === '' || password.trim() === '') {
-            alert("Nama pengguna dan kata sandi tidak boleh kosong.");
-            return;
-        }
-        setIsLoggedIn(true);
-        setLoggedInUsername(username);
-        setShowLoginPage(false);
-    };
-
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100/30 p-4">
-            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md ">
-                <h2 className="text-4xl font-bold text-center mb-8 text-purple-700">Login</h2>
-                <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
-                        Nama Pengguna
-                    </label>
-                    <input
-                        type="text"
-                        id="username"
-                        className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-400"
-                        placeholder="Masukkan nama pengguna Anda"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                    />
-                </div>
-                <div className="mb-6">
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-                        Kata Sandi
-                    </label>
-                    <input
-                        type="password"
-                        id="password"
-                        className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-400"
-                        placeholder="Masukkan kata sandi Anda"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-                </div>
-                <button
-                    onClick={handleLogin}
-                    className="w-full bg-purple-400 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200"
-                >
-                    Masuk
-                </button>
-                <button
-                    onClick={() => setShowLoginPage(false)}
-                    className="w-full mt-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200"
-                >
-                    Batal
-                </button>
-            </div>
-        </div>
-    );
-}
-
-//========(Komponen Modal Konfirmasi)========
 interface ConfirmationModalProps {
     message: string;
     onConfirm: () => void;
@@ -108,21 +44,43 @@ function ConfirmationModal({ message, onConfirm, onCancel }: ConfirmationModalPr
     );
 }
 
-
-//========(Komponen Utama Halaman Todo)========
 function Page() {
-
     const inTugasname = useRef<HTMLInputElement>(null);
 
     const [data, setData] = useState<TodoItem[]>([]);
     const [filter, setFilter] = useState<'All' | 'Active' | 'Completed'>('All');
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null); // Jaga agar bisa null
+
+    // Kontrol tampilan halaman utama
     const [showLoginPage, setShowLoginPage] = useState(false);
-    const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null);
+    const [showSignupPage, setShowSignupPage] = useState(false);
+    const [showLandingPage, setShowLandingPage] = useState(true); // Default: tampilkan landing page dulu
+
     const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
 
-    //========(Muat data dari sessionStorage saat komponen dimuat)========
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [editedText, setEditedText] = useState<string>('');
+
+    // --- useEffect: Memuat data dari sessionStorage saat komponen dimuat ---
     useEffect(() => {
+        const storedLoginStatus = sessionStorage.getItem('isLoggedIn');
+        const storedUsername = sessionStorage.getItem('loggedInUsername');
+
+        if (storedLoginStatus === 'true' && storedUsername) {
+            setIsLoggedIn(true);
+            setLoggedInUsername(storedUsername);
+            setShowLandingPage(false);
+            setShowLoginPage(false);
+            setShowSignupPage(false);
+        } else {
+            setIsLoggedIn(false); // Pastikan ini false jika tidak login
+            setLoggedInUsername(null); // Pastikan ini null jika tidak login
+            setShowLandingPage(true);
+            setShowLoginPage(false);
+            setShowSignupPage(false);
+        }
+
         const simpan = sessionStorage.getItem('todo');
         if (simpan) {
             try {
@@ -140,15 +98,9 @@ function Page() {
                 setData([]);
             }
         }
-        const storedLoginStatus = sessionStorage.getItem('isLoggedIn');
-        const storedUsername = sessionStorage.getItem('loggedInUsername');
-        if (storedLoginStatus === 'true' && storedUsername) {
-            setIsLoggedIn(true);
-            setLoggedInUsername(storedUsername);
-        }
     }, []);
 
-    //========(Simpan data ke sessionStorage setiap kali 'data' atau status login berubah)========
+    // --- useEffect: Menyimpan data ke sessionStorage saat state relevan berubah ---
     useEffect(() => {
         sessionStorage.setItem('todo', JSON.stringify(data));
         sessionStorage.setItem('isLoggedIn', String(isLoggedIn));
@@ -157,10 +109,18 @@ function Page() {
         } else {
             sessionStorage.removeItem('loggedInUsername');
         }
-    }, [data, isLoggedIn, loggedInUsername]);
+
+        console.log(
+            'State updated - isLoggedIn:', isLoggedIn,
+            'loggedInUsername:', loggedInUsername,
+            'showLandingPage:', showLandingPage,
+            'showLoginPage:', showLoginPage,
+            'showSignupPage:', showSignupPage
+        );
+    }, [data, isLoggedIn, loggedInUsername, showLandingPage, showLoginPage, showSignupPage]);
 
 
-    //========(Menambahkan tugas baru saat tombol Enter ditekan)========
+    // --- Fungsi Handler untuk Aplikasi Todo (tidak ada perubahan signifikan) ---
     function onBtSubmit(event: React.KeyboardEvent<HTMLInputElement>) {
         if (!isLoggedIn) {
             alert("Silakan masuk untuk menambahkan tugas.");
@@ -186,14 +146,12 @@ function Page() {
         }
     }
 
-    //========(Mengubah status selesai/belum selesai dari tugas)========
     function toggleTodoCompletion(index: number) {
         const newData = [...data];
         newData[index].completed = !newData[index].completed;
         setData(newData);
     }
 
-    //========(Mengembalikan daftar tugas berdasarkan filter yang dipilih)========
     function getFilteredTodos() {
         if (filter === 'Active') {
             return data.filter(item => !item.completed);
@@ -203,40 +161,31 @@ function Page() {
         return data;
     }
 
-    //========(Menghapus semua tugas yang sudah selesai)========
     function clearCompletedTodos() {
         setData(data.filter(item => !item.completed));
     }
 
-    //========(Menampilkan modal konfirmasi logout)========
     function confirmLogout() {
         setShowConfirmLogoutModal(true);
     }
 
-    //========(Menangani konfirmasi logout dan membersihkan data)========
     function handleLogoutConfirmed() {
         setIsLoggedIn(false);
         setLoggedInUsername(null);
-        setData([]);
+        setData([]); // Clear todos on logout
         sessionStorage.removeItem('todo');
         sessionStorage.removeItem('isLoggedIn');
         sessionStorage.removeItem('loggedInUsername');
         setShowLoginPage(false);
         setShowConfirmLogoutModal(false);
+        setShowLandingPage(true); // Kembali ke landing page setelah logout
     }
 
-    //========(State untuk melacak index item yang sedang diedit)========
-    const [editingIndex, setEditingIndex] = useState<number | null>(null);
-    //========(State untuk menyimpan teks yang sedang diedit)========
-    const [editedText, setEditedText] = useState<string>('');
-
-    //========(Memulai mode edit untuk tugas tertentu)========
     const handleEditClick = (index: number, text: string) => {
         setEditingIndex(index);
         setEditedText(text);
     };
 
-    //========(Menyimpan perubahan setelah mengedit tugas)========
     const handleSaveEdit = (originalIndex: number) => {
         if (editedText.trim() === "") {
             alert("Todo tidak boleh kosong!");
@@ -255,12 +204,11 @@ function Page() {
         setEditedText('');
     };
 
-    //========(Membatalkan mode edit)========
     const handleCancelEdit = () => {
         setEditingIndex(null);
         setEditedText('');
     };
-    //========(Menampilkan daftar tugas yang difilter)========
+
     function displayData() {
         const filteredTodos = getFilteredTodos();
         return filteredTodos.map((item: TodoItem, index: number) => {
@@ -326,14 +274,41 @@ function Page() {
         });
     }
 
-    //========(Menghitung jumlah tugas yang belum selesai)========
     const itemsLeft = data.filter(item => !item.completed).length;
 
-    //========(Menampilkan halaman login jika showLoginPage true)========
+    // --- CONDITIONAL RENDERING UTAMA ---
+    // Pastikan hanya satu dari ini yang dieksekusi berdasarkan kondisi
     if (showLoginPage) {
-        return <LoginPage setIsLoggedIn={setIsLoggedIn} setShowLoginPage={setShowLoginPage} setLoggedInUsername={setLoggedInUsername} />;
+        console.log("Rendering LoginPage...");
+        return (
+            <LoginPage
+                setIsLoggedIn={setIsLoggedIn}
+                setShowLoginPage={setShowLoginPage}
+                setLoggedInUsername={setLoggedInUsername} // Langsung passing fungsi state
+                setShowLandingPage={setShowLandingPage}
+            />
+        );
     }
 
+    if (showSignupPage) {
+        console.log("Rendering SignupPage...");
+        return (
+            <SignupPage
+                setShowLoginPage={setShowLoginPage}
+                setShowSignupPage={setShowSignupPage}
+                setShowLandingPage={setShowLandingPage}
+            />
+        );
+    }
+
+    if (showLandingPage) {
+        console.log("Rendering LandingPage...");
+        return <LandingPage setShowLoginPage={setShowLoginPage} setShowSignupPage={setShowSignupPage} />;
+    }
+
+    // Default: Jika tidak ada kondisi di atas yang terpenuhi, tampilkan Todo App (saat sudah login)
+    // Ini adalah fallback jika isLogged menjadi true tetapi tidak ada showPage yang true
+    console.log("Rendering Todo App (Logged In)...");
     return (
         <div className="min-h-screen flex justify-center">
             <div className="container w-full max-w-xl px-5">
